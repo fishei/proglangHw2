@@ -1,0 +1,11 @@
+module election;
+
+behavior Main
+{
+	void act(String[] argv)
+	{
+		Supervisor sup = new Supervisor();
+		sup <- registerVoterNeighbors(0) @
+		sup <- startElection(0);
+	}
+}

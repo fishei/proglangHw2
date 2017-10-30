@@ -1,0 +1,62 @@
+module election;
+
+behavior Supervisor
+{
+	Voter[] voters;
+	int numElections = 0;
+	
+	Supervisor()
+	{
+		voters = new Voter[5];
+		voters[0] = new Voter(20,10,self,0);
+		voters[1] = new Voter(4,50,self,1);
+		voters[2] = new Voter(18,40,self,2);
+		voters[3] = new Voter(15,30,self,3);
+		voters[4] = new Voter(14,20,self,4);
+	}
+
+	void registerVoterNeighbors(int i)
+	{
+		if(i < voters.length)
+		{
+			getLeft(i)@
+			voters[i] <- setLeft(token)@
+			getRight(i) @
+			voters[i] <- setRight(token) @
+			voters[i] <- setNumNodes(voters.length) @
+			registerVoterNeighbors(i+1) @
+			currentContinuation;
+		}
+	}
+	Voter getLeft(int i)
+	{
+		//standardOutput <- println("testA " + i);
+		Voter v;
+		if(i == 0) v = voters[voters.length -1];
+		else v =  voters[i-1];
+		//if(v == null) standardOutput <- println("testB!!!!!!!!!!!!!!!!!!!!");
+		return v;
+	}
+
+	Voter getRight(int i)
+	{
+		if(i == voters.length - 1) return voters[0];
+		else return voters[i+1];
+	}
+
+	int numNodes()
+	{
+		return voters.length;
+	}
+
+	void startElection(int tstamp)
+	{
+		numElections++;
+		if(numElections > voters.length){
+			standardOutput <- println("End of simulation");
+			return;
+		}
+		for(int i=0; i<voters.length; i++)
+			voters[i] <- startElection(tstamp);
+	}
+}

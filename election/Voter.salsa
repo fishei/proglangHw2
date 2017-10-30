@@ -1,0 +1,138 @@
+module election;
+
+behavior Voter{
+	int voterId;
+	int priority;
+	int tolerance;
+	Voter left;
+	Voter right;
+	Supervisor sup;
+	boolean hasBeenLeader;
+	boolean isPassive;
+	int lastElection;
+	boolean isLeader;
+	int lastTtl = 1;
+	int repliesReceived = 0;
+	int timeStamp;
+	boolean isRevolting;
+	int numNodes = -1;
+	
+	Voter(int ip, int it, Supervisor isup, int id)
+	{
+		priority = ip;
+		tolerance = it;
+		lastElection = 0;
+		isPassive = false;
+		hasBeenLeader = false;
+		isRevolting = false;
+		left = null;
+		right = null;
+		sup = isup;
+		voterId = id;
+		isLeader = false;
+	}
+
+	void setLeft(Voter voter)
+	{
+		//standardOutput <- println("test6!!!!!!!!!!");
+		//if(voter == null) standardOutput <- println("test5!!!");
+		this.left = voter;
+		//if(this.left == null) standardOutput <- println("test5.1!!!");
+		return;
+	}
+	
+	void setNumNodes(int n)
+	{
+		numNodes = n;
+	}
+
+	void setRight(Voter voter)
+	{
+		right = voter;
+	}
+
+	void startElection(int tStamp)
+	{
+		//standardOutput <- println("test1");
+		lastElection = tStamp;
+		isPassive = false;
+		isLeader = false;
+		isRevolting = false;
+		lastTtl = 1;
+		repliesReceived = 0;
+		if(! hasBeenLeader)
+		{
+			left <- probeFromRight(voterId, lastTtl, true, self, priority);
+			right <- probeFromLeft(voterId, lastTtl, true, self, priority);
+		}
+	}
+
+	void issueTimeStamp()
+	{
+		left <- receiveTimeStamp(lastElection +1,0);
+	}
+
+	void receiveTimeStamp(int tstamp, int numRevolting)
+	{
+		timeStamp = tstamp;
+		int newNumR = numRevolting;
+		if(!isRevolting && !isLeader && tolerance < tstamp - lastElection){
+			newNumR++;
+			isRevolting = true;
+			standardOutput <- println("ID=" + voterId + " revolted at t=" + tstamp);
+		}
+		if(isLeader && numRevolting >= ((numNodes + 1) / 2)) deposed(tstamp);
+		else left <- receiveTimeStamp(tstamp + 1, newNumR);
+	}
+	
+	void deposed(int tstamp)
+	{
+		standardOutput <- println("ID=" + voterId + " was deposed at t=" + tstamp);
+		isLeader = false;
+		hasBeenLeader = true;
+		sup <- startElection(tstamp + 1);
+	}
+	void becomeLeader()
+	{
+		if(isLeader) return;
+		isLeader = true;		
+		standardOutput <- println("ID=" + voterId + " became leader at t=" + lastElection);
+		issueTimeStamp();
+	}
+
+	void probeReply(boolean leaderBit)
+	{
+		repliesReceived++;
+		if(!leaderBit) isPassive = true;
+		if(!isPassive && repliesReceived ==2)
+		{
+			repliesReceived = 0;
+			lastTtl*=2;
+			left <- probeFromRight(voterId, lastTtl, true, self, priority);
+			right <- probeFromLeft(voterId, lastTtl, true, self, priority);
+		}
+	}
+
+	void probeFromLeft(int senderId, int ttl, boolean leaderBit, Voter sender, int pri)
+	{
+		if(senderId == voterId){
+			becomeLeader();
+			return;
+		}
+		boolean newLb = (leaderBit && (hasBeenLeader || priority < pri));
+		if(ttl == 1) sender <- probeReply(newLb);
+		else right <- probeFromLeft(senderId, ttl - 1, newLb, sender, pri);
+	}
+
+	void probeFromRight(int senderId, int ttl, boolean leaderBit, Voter sender, int pri)
+	{
+		if(senderId == voterId){
+			becomeLeader();
+			return;
+		}
+		boolean newLb = (leaderBit && (hasBeenLeader || priority < pri));
+		if(ttl == 1) sender <- probeReply(newLb);
+		else left <- probeFromRight(senderId, ttl - 1, newLb, sender, pri);
+	}
+	
+}	
